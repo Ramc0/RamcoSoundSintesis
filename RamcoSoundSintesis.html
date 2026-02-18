@@ -21,42 +21,75 @@
             top: 20px;
             left: 20px;
             background: linear-gradient(145deg, #1f1f1f, #2c2c2c);
-            padding: 15px 20px;
+            padding: 20px;
             border-radius: 12px;
             color: white;
             font-family: sans-serif;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
+            width: 240px;
         }
 
-        #controls label {
-            display: block;
-            margin-bottom: 8px;
+        #controls h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #40C4FF;
+            text-align: center;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .control-row label {
+            font-weight: 500;
         }
 
         #controls select {
-            margin-left: 5px;
             background: #111;
             color: #40C4FF;
             border: 1px solid #40C4FF;
             border-radius: 6px;
             padding: 4px 6px;
+            width: 120px;
+        }
+
+        #controls button {
+            background: #ff5252;
+            border: none;
+            color: white;
+            padding: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        #controls button:hover {
+            background: #ff1744;
+            transform: scale(1.03);
         }
     </style>
 </head>
 
 <body>
     <div id="controls">
-        <h3 style="margin-top:0; color:#40C4FF;">Ramco Sound Engine</h3>
-        <label>Escala:
+        <h3>RamcoSoundSintesis</h3>
+
+        <div class="control-row">
+            <label for="scaleSelector">Escala:</label>
             <select id="scaleSelector">
                 <option value="major">Mayor</option>
                 <option value="minor">Menor</option>
                 <option value="pentatonic">Pentatónica</option>
             </select>
-        </label>
+        </div>
 
-        <label style="margin-left:10px;">Tonalidad:
+        <div class="control-row">
+            <label for="rootSelector">Tonalidad:</label>
             <select id="rootSelector">
                 <option value="60">C</option>
                 <option value="62">D</option>
@@ -66,27 +99,33 @@
                 <option value="69">A</option>
                 <option value="71">B</option>
             </select>
+        </div>
 
-        </label>
-
-        <label style="margin-left:10px;">Onda:
+        <div class="control-row">
+            <label for="waveSelector">Onda:</label>
             <select id="waveSelector">
                 <option value="sine">Seno</option>
                 <option value="square">Cuadrada</option>
                 <option value="triangle">Triangular</option>
                 <option value="sawtooth">Sierra</option>
             </select>
-        </label>
+        </div>
 
-        <label style="margin-left:10px;">Armonía:
+        <div class="control-row">
+            <label for="harmonySelector">Armonía:</label>
             <select id="harmonySelector">
                 <option value="single">Nota sola</option>
                 <option value="fifth">Quinta</option>
                 <option value="majorChord">Acorde Mayor</option>
                 <option value="minorChord">Acorde Menor</option>
             </select>
-        </label>
+        </div>
+
+        <div style="text-align:center;">
+            <button id="clearBalls">Borrar todas las bolas</button>
+        </div>
     </div>
+
     <canvas id="canvas"></canvas>
     <script>
         const canvas = document.getElementById('canvas');
@@ -496,6 +535,10 @@
         });
         document.getElementById('harmonySelector').addEventListener('change', (e) => {
             harmonyMode = e.target.value;
+        });
+        document.getElementById('clearBalls').addEventListener('click', () => {
+            bassBalls.length = 0;
+            trebleBalls.length = 0;
         });
 
         // Start animation
