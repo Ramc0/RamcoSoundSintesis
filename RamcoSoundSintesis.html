@@ -60,6 +60,15 @@
                 <option value="sawtooth">Sierra</option>
             </select>
         </label>
+
+        <label style="margin-left:10px;">Armonía:
+            <select id="harmonySelector">
+                <option value="single">Nota sola</option>
+                <option value="fifth">Quinta</option>
+                <option value="majorChord">Acorde Mayor</option>
+                <option value="minorChord">Acorde Menor</option>
+            </select>
+        </label>
     </div>
     <canvas id="canvas"></canvas>
     <script>
@@ -86,6 +95,7 @@
         let currentScale = 'major';
         let rootMidi = 60;
         let currentWave = 'sine';
+        let harmonyMode = 'single';
 
         // Convertir MIDI a frecuencia
         function midiToFreq(midi) {
@@ -239,6 +249,9 @@
         function updateBalls() {
             updateCircleBalls(bassBalls, leftCenterX, centerY, bassNotes);
             updateCircleBalls(trebleBalls, rightCenterX, centerY, trebleNotes);
+
+            handleBallCollisions(bassBalls);
+            handleBallCollisions(trebleBalls);
         }
 
         // Update balls for a circle
@@ -259,7 +272,7 @@
 
                     // Play note
                     if (arcIndex >= 0 && arcIndex < notes.length) {
-                        playNote(notes[arcIndex]);
+                        playHarmony(notes[arcIndex]);
                     }
 
                     // Reflect the ball's velocity
@@ -275,6 +288,45 @@
                     ball.y -= overlap * normalY;
                 }
             });
+        }
+
+        function handleBallCollisions(balls) {
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+
+                    const b1 = balls[i];
+                    const b2 = balls[j];
+
+                    const dx = b2.x - b1.x;
+                    const dy = b2.y - b1.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < b1.radius + b2.radius) {
+
+                        // Normalizar vector
+                        const nx = dx / distance;
+                        const ny = dy / distance;
+
+                        // Intercambio simple de velocidades (rebote elástico simplificado)
+                        const p = 2 * (b1.dx * nx + b1.dy * ny - b2.dx * nx - b2.dy * ny) / 2;
+
+                        b1.dx = b1.dx - p * nx;
+                        b1.dy = b1.dy - p * ny;
+                        b2.dx = b2.dx + p * nx;
+                        b2.dy = b2.dy + p * ny;
+
+                        // Separarlas para evitar que se queden pegadas
+                        const overlap = (b1.radius + b2.radius - distance) / 2;
+                        b1.x -= overlap * nx;
+                        b1.y -= overlap * ny;
+                        b2.x += overlap * nx;
+                        b2.y += overlap * ny;
+
+                        // Generar sonido extra por colisión
+                        playHarmony(rootMidi);
+                    }
+                }
+            }
         }
 
         // Play a note with piano-like decay and dynamic gain
@@ -301,6 +353,32 @@
             oscillator.onended = () => {
                 activeOscillators--;
             };
+        }
+
+        function playHarmony(midiNote) {
+            switch (harmonyMode) {
+
+                case 'single':
+                    playNote(midiNote);
+                    break;
+
+                case 'fifth':
+                    playNote(midiNote);
+                    playNote(midiNote + 7);
+                    break;
+
+                case 'majorChord':
+                    playNote(midiNote);
+                    playNote(midiNote + 4);
+                    playNote(midiNote + 7);
+                    break;
+
+                case 'minorChord':
+                    playNote(midiNote);
+                    playNote(midiNote + 3);
+                    playNote(midiNote + 7);
+                    break;
+            }
         }
 
         // Create a new ball with direction and speed from drag
@@ -396,6 +474,9 @@
         document.getElementById('rootSelector').addEventListener('change', (e) => {
             rootMidi = parseInt(e.target.value);
             updateScale();
+        });
+        document.getElementById('harmonySelector').addEventListener('change', (e) => {
+            harmonyMode = e.target.value;
         });
 
         // Start animation
