@@ -9,7 +9,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background: #121212;
+            background: radial-gradient(circle at center, #1b2735, #090a0f);
         }
 
         canvas {
@@ -20,17 +20,34 @@
             position: fixed;
             top: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 15px;
-            border-radius: 8px;
+            background: linear-gradient(145deg, #1f1f1f, #2c2c2c);
+            padding: 15px 20px;
+            border-radius: 12px;
             color: white;
             font-family: sans-serif;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        #controls label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        #controls select {
+            margin-left: 5px;
+            background: #111;
+            color: #40C4FF;
+            border: 1px solid #40C4FF;
+            border-radius: 6px;
+            padding: 4px 6px;
         }
     </style>
 </head>
 
 <body>
     <div id="controls">
+        <h3 style="margin-top:0; color:#40C4FF;">Ramco Sound Engine</h3>
         <label>Escala:
             <select id="scaleSelector">
                 <option value="major">Mayor</option>
@@ -300,6 +317,8 @@
                     const dx = b2.x - b1.x;
                     const dy = b2.y - b1.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0)
+                        return;
 
                     if (distance < b1.radius + b2.radius) {
 
@@ -459,9 +478,9 @@
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            let leftCenterX = canvas.width * 0.3;
-            let rightCenterX = canvas.width * 0.7;
-            let centerY = canvas.height / 2;
+            leftCenterX = canvas.width * 0.3;
+            rightCenterX = canvas.width * 0.7;
+            centerY = canvas.height / 2;
         });
         document.getElementById('waveSelector').addEventListener('change', (e) => {
             currentWave = e.target.value;
