@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RamcoSoundSintesis</title>
+
     <style>
         body {
             margin: 0;
@@ -31,8 +32,7 @@
         }
 
         #controls h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
+            margin: 0 0 15px 0;
             color: #40C4FF;
             text-align: center;
         }
@@ -42,10 +42,6 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
-        }
-
-        .control-row label {
-            font-weight: 500;
         }
 
         #controls select {
@@ -58,6 +54,9 @@
         }
 
         #controls button {
+            display: block;
+            margin: 15px auto 0 auto;
+            width: 80%;
             background: #ff5252;
             border: none;
             color: white;
@@ -76,11 +75,12 @@
 </head>
 
 <body>
+
     <div id="controls">
         <h3>RamcoSoundSintesis</h3>
 
         <div class="control-row">
-            <label for="scaleSelector">Escala:</label>
+            <label>Escala:</label>
             <select id="scaleSelector">
                 <option value="major">Mayor</option>
                 <option value="minor">Menor</option>
@@ -89,7 +89,7 @@
         </div>
 
         <div class="control-row">
-            <label for="rootSelector">Tonalidad:</label>
+            <label>Tonalidad:</label>
             <select id="rootSelector">
                 <option value="60">C</option>
                 <option value="62">D</option>
@@ -102,7 +102,7 @@
         </div>
 
         <div class="control-row">
-            <label for="waveSelector">Onda:</label>
+            <label>Onda:</label>
             <select id="waveSelector">
                 <option value="sine">Seno</option>
                 <option value="square">Cuadrada</option>
@@ -112,7 +112,7 @@
         </div>
 
         <div class="control-row">
-            <label for="harmonySelector">Armonía:</label>
+            <label>Armonía:</label>
             <select id="harmonySelector">
                 <option value="single">Nota sola</option>
                 <option value="fifth">Quinta</option>
@@ -121,178 +121,135 @@
             </select>
         </div>
 
-        <div style="text-align:center;">
-            <button id="clearBalls">Borrar todas las bolas</button>
-        </div>
+        <button id="clearBalls">Borrar todas las bolas</button>
     </div>
 
     <canvas id="canvas"></canvas>
+
     <script>
+
+        // ============================================================
+        // INICIALIZACIÓN
+        // ============================================================
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Set canvas to full browser size
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // ===============================
-        // MUSICAL ENGINE (Dynamic Scale)
-        // ===============================
+        const BALL_RGB = { r: 64, g: 196, b: 255 };
 
-        // Escalas definidas por intervalos
+        // ============================================================
+        // MOTOR MUSICAL
+        // ============================================================
+
         const scales = {
             major: [0, 2, 4, 5, 7, 9, 11],
             minor: [0, 2, 3, 5, 7, 8, 10],
             pentatonic: [0, 3, 5, 7, 10]
         };
 
-        // Configuración actual
         let currentScale = 'major';
         let rootMidi = 60;
         let currentWave = 'sine';
         let harmonyMode = 'single';
 
-        // Convertir MIDI a frecuencia
         function midiToFreq(midi) {
             return 440 * Math.pow(2, (midi - 69) / 12);
         }
 
-        // Generar notas para un registro
         function generateScaleNotes(baseMidi) {
-            return scales[currentScale].map(interval => baseMidi + interval);
+            return scales[currentScale].map(i => baseMidi + i);
         }
 
-        // Generamos dos registros dinámicos
-        let bassNotes = generateScaleNotes(rootMidi - 12);     // Una octava abajo
-        let trebleNotes = generateScaleNotes(rootMidi + 12);   // Una octava arriba
-
-        // Colors for each note
-        const noteColors = {
-            'C3': '#FF5252', 'D3': '#FF4081', 'E3': '#E040FB', 'F3': '#7C4DFF', 'G3': '#536DFE', 'A3': '#448AFF', 'B3': '#40C4FF',
-            'C5': '#FF5252', 'D5': '#FF4081', 'E5': '#E040FB', 'F5': '#7C4DFF', 'G5': '#536DFE', 'A5': '#448AFF', 'B5': '#40C4FF'
-        };
-
-        // Circle properties
-        const leftCenterX = canvas.width * 0.3;   // Bass (left, closer to edge)
-        const rightCenterX = canvas.width * 0.7;  // Treble (right, closer to edge)
-        const centerY = canvas.height / 2;
-        const radius = Math.min(canvas.width, canvas.height) * 0.35; // Bigger circles
-
-        // Balls array for both circles
-        const bassBalls = [];
-        const trebleBalls = [];
-        let activeOscillators = 0;
-
-        // Drag state
-        let isDragging = false;
-        let dragStartX, dragStartY;
-        let dragEndX, dragEndY;
-        let currentCircle = null;
+        let bassNotes = generateScaleNotes(rootMidi - 12);
+        let trebleNotes = generateScaleNotes(rootMidi + 12);
 
         function updateScale() {
             bassNotes = generateScaleNotes(rootMidi - 12);
             trebleNotes = generateScaleNotes(rootMidi + 12);
         }
 
-        // Draw both circles and arcs
+        // ============================================================
+        // ESCENA
+        // ============================================================
+
+        let leftCenterX = canvas.width * 0.3;
+        let rightCenterX = canvas.width * 0.7;
+        let centerY = canvas.height / 2;
+        const radius = Math.min(canvas.width, canvas.height) * 0.35;
+
+        const bassBalls = [];
+        const trebleBalls = [];
+        let activeOscillators = 0;
+
+        let isDragging = false;
+        let dragStartX, dragStartY, dragEndX, dragEndY;
+        let currentCircle = null;
+
+        // ============================================================
+        // DIBUJO
+        // ============================================================
+
         function drawCircles() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw bass circle (left)
             ctx.strokeStyle = '#aaa';
             ctx.lineWidth = 8;
+
             ctx.beginPath();
             ctx.arc(leftCenterX, centerY, radius, 0, Math.PI * 2);
             ctx.stroke();
-            drawArcs(bassNotes, leftCenterX, centerY);
+            drawArcs(bassNotes, leftCenterX);
 
-            // Draw treble circle (right)
             ctx.beginPath();
             ctx.arc(rightCenterX, centerY, radius, 0, Math.PI * 2);
             ctx.stroke();
-            drawArcs(trebleNotes, rightCenterX, centerY);
+            drawArcs(trebleNotes, rightCenterX);
         }
 
-        // Draw arcs for a circle
-        function drawArcs(notes, centerX, centerY) {
+        function drawArcs(notes, centerX) {
             const arcAngle = (2 * Math.PI) / notes.length;
-            notes.forEach((note, i) => {
+
+            notes.forEach((_, i) => {
                 ctx.strokeStyle = '#40C4FF';
-                ctx.lineWidth = 8;
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, i * arcAngle, (i + 1) * arcAngle);
                 ctx.stroke();
             });
         }
 
-        // Draw all balls with glow and motion blur
         function drawBalls() {
-            bassBalls.forEach(ball => {
-                // Motion blur effect
+            [...bassBalls, ...trebleBalls].forEach(ball => {
                 for (let i = 0; i < 5; i++) {
-                    const blurAlpha = 0.1 * (5 - i);
-                    ctx.fillStyle = `rgba(${hexToRgb(ball.color).r}, ${hexToRgb(ball.color).g}, ${hexToRgb(ball.color).b}, ${blurAlpha})`;
+                    const alpha = 0.1 * (5 - i);
+                    ctx.fillStyle = `rgba(${BALL_RGB.r},${BALL_RGB.g},${BALL_RGB.b},${alpha})`;
                     ctx.beginPath();
                     ctx.arc(ball.x - ball.dx * i * 0.5, ball.y - ball.dy * i * 0.5, ball.radius + i * 0.5, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
-                // Glow effect
                 const gradient = ctx.createRadialGradient(ball.x, ball.y, ball.radius * 0.5, ball.x, ball.y, ball.radius * 2);
-                gradient.addColorStop(0, ball.color);
+                gradient.addColorStop(0, 'rgba(64,196,255,1)');
                 gradient.addColorStop(1, 'transparent');
+
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
                 ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Ball itself
-                ctx.fillStyle = ball.color;
-                ctx.beginPath();
-                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            trebleBalls.forEach(ball => {
-                // Motion blur effect
-                for (let i = 0; i < 5; i++) {
-                    const blurAlpha = 0.1 * (5 - i);
-                    ctx.fillStyle = `rgba(${hexToRgb(ball.color).r}, ${hexToRgb(ball.color).g}, ${hexToRgb(ball.color).b}, ${blurAlpha})`;
-                    ctx.beginPath();
-                    ctx.arc(ball.x - ball.dx * i * 0.5, ball.y - ball.dy * i * 0.5, ball.radius + i * 0.5, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                // Glow effect
-                const gradient = ctx.createRadialGradient(ball.x, ball.y, ball.radius * 0.5, ball.x, ball.y, ball.radius * 2);
-                gradient.addColorStop(0, ball.color);
-                gradient.addColorStop(1, 'transparent');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(ball.x, ball.y, ball.radius * 2, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ball itself
-                ctx.fillStyle = ball.color;
+                ctx.fillStyle = '#40C4FF';
                 ctx.beginPath();
                 ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
 
-        // Helper function to convert hex to RGB
-        function hexToRgb(hex) {
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
-            return { r, g, b };
-        }
-
-        // Draw preview line during drag
         function drawPreviewLine() {
             if (isDragging && currentCircle) {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.strokeStyle = 'rgba(255,255,255,0.7)';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(dragStartX, dragStartY);
@@ -301,47 +258,32 @@
             }
         }
 
-        // Update all balls' positions and handle bouncing
-        function updateBalls() {
-            updateCircleBalls(bassBalls, leftCenterX, centerY, bassNotes);
-            updateCircleBalls(trebleBalls, rightCenterX, centerY, trebleNotes);
+        // ============================================================
+        // FÍSICA
+        // ============================================================
 
-            handleBallCollisions(bassBalls);
-            handleBallCollisions(trebleBalls);
-        }
-
-        // Update balls for a circle
-        function updateCircleBalls(balls, centerX, centerY, notes) {
+        function updateCircleBalls(balls, centerX, notes) {
             balls.forEach(ball => {
                 ball.x += ball.dx;
                 ball.y += ball.dy;
 
-                // Distance from center
-                const distance = Math.sqrt((ball.x - centerX) ** 2 + (ball.y - centerY) ** 2);
+                const dist = Math.hypot(ball.x - centerX, ball.y - centerY);
 
-                // Bounce off the circle
-                if (distance + ball.radius >= radius) {
-                    // Calculate angle of collision
+                if (dist + ball.radius >= radius) {
+
                     const angle = Math.atan2(ball.y - centerY, ball.x - centerX);
                     const arcAngle = (2 * Math.PI) / notes.length;
-                    const arcIndex = Math.floor((angle + 2 * Math.PI) % (2 * Math.PI) / arcAngle);
+                    const index = Math.floor((angle + 2 * Math.PI) % (2 * Math.PI) / arcAngle);
 
-                    // Play note
-                    if (arcIndex >= 0 && arcIndex < notes.length) {
-                        playHarmony(notes[arcIndex]);
-                    }
+                    if (index >= 0 && index < notes.length)
+                        playHarmony(notes[index]);
 
-                    // Reflect the ball's velocity
-                    const normalX = (ball.x - centerX) / distance;
-                    const normalY = (ball.y - centerY) / distance;
-                    const dotProduct = ball.dx * normalX + ball.dy * normalY;
-                    ball.dx = ball.dx - 2 * dotProduct * normalX;
-                    ball.dy = ball.dy - 2 * dotProduct * normalY;
+                    const nx = (ball.x - centerX) / dist;
+                    const ny = (ball.y - centerY) / dist;
+                    const dot = ball.dx * nx + ball.dy * ny;
 
-                    // Reposition ball to avoid sticking
-                    const overlap = distance + ball.radius - radius;
-                    ball.x -= overlap * normalX;
-                    ball.y -= overlap * normalY;
+                    ball.dx -= 2 * dot * nx;
+                    ball.dy -= 2 * dot * ny;
                 }
             });
         }
@@ -355,109 +297,76 @@
 
                     const dx = b2.x - b1.x;
                     const dy = b2.y - b1.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance === 0)
-                        return;
+                    const dist = Math.hypot(dx, dy);
 
-                    if (distance < b1.radius + b2.radius) {
+                    if (dist === 0 || dist > b1.radius + b2.radius) continue;
 
-                        // Normalizar vector
-                        const nx = dx / distance;
-                        const ny = dy / distance;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
 
-                        // Intercambio simple de velocidades (rebote elástico simplificado)
-                        const p = 2 * (b1.dx * nx + b1.dy * ny - b2.dx * nx - b2.dy * ny) / 2;
+                    const p = 2 * (b1.dx * nx + b1.dy * ny - b2.dx * nx - b2.dy * ny) / 2;
 
-                        b1.dx = b1.dx - p * nx;
-                        b1.dy = b1.dy - p * ny;
-                        b2.dx = b2.dx + p * nx;
-                        b2.dy = b2.dy + p * ny;
+                    b1.dx -= p * nx;
+                    b1.dy -= p * ny;
+                    b2.dx += p * nx;
+                    b2.dy += p * ny;
 
-                        // Separarlas para evitar que se queden pegadas
-                        const overlap = (b1.radius + b2.radius - distance) / 2;
-                        b1.x -= overlap * nx;
-                        b1.y -= overlap * ny;
-                        b2.x += overlap * nx;
-                        b2.y += overlap * ny;
-
-                        // Generar sonido extra por colisión
-                        playHarmony(rootMidi);
-                    }
+                    playHarmony(rootMidi);
                 }
             }
         }
 
-        // Play a note with piano-like decay and dynamic gain
-        function playNote(midiNote) {
+        function updateBalls() {
+            updateCircleBalls(bassBalls, leftCenterX, bassNotes);
+            updateCircleBalls(trebleBalls, rightCenterX, trebleNotes);
+            handleBallCollisions(bassBalls);
+            handleBallCollisions(trebleBalls);
+        }
+
+        // ============================================================
+        // AUDIO
+        // ============================================================
+
+        function playNote(midi) {
             const now = audioCtx.currentTime;
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
 
-            oscillator.type = currentWave;
-            oscillator.frequency.value = midiToFreq(midiNote);
+            osc.type = currentWave;
+            osc.frequency.value = midiToFreq(midi);
 
-            const gainValue = 0.5 / (activeOscillators + 1);
-            gainNode.gain.setValueAtTime(0, now);
-            gainNode.gain.linearRampToValueAtTime(gainValue, now + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1);
+            const value = 0.5 / (activeOscillators + 1);
 
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(value, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1);
 
-            oscillator.start(now);
-            oscillator.stop(now + 1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 1);
 
             activeOscillators++;
-            oscillator.onended = () => {
-                activeOscillators--;
-            };
+            osc.onended = () => activeOscillators--;
         }
 
-        function playHarmony(midiNote) {
-            switch (harmonyMode) {
-
-                case 'single':
-                    playNote(midiNote);
-                    break;
-
-                case 'fifth':
-                    playNote(midiNote);
-                    playNote(midiNote + 7);
-                    break;
-
-                case 'majorChord':
-                    playNote(midiNote);
-                    playNote(midiNote + 4);
-                    playNote(midiNote + 7);
-                    break;
-
-                case 'minorChord':
-                    playNote(midiNote);
-                    playNote(midiNote + 3);
-                    playNote(midiNote + 7);
-                    break;
-            }
+        function playHarmony(midi) {
+            if (harmonyMode === 'single') playNote(midi);
+            if (harmonyMode === 'fifth') { playNote(midi); playNote(midi + 7); }
+            if (harmonyMode === 'majorChord') { playNote(midi); playNote(midi + 4); playNote(midi + 7); }
+            if (harmonyMode === 'minorChord') { playNote(midi); playNote(midi + 3); playNote(midi + 7); }
         }
 
-        // Create a new ball with direction and speed from drag
+        // ============================================================
+        // INTERACCIÓN
+        // ============================================================
+
         function createBall(x, y, dx, dy, circle) {
-            const ballRadius = 12;
-            const ball = {
-                x: x,
-                y: y,
-                radius: ballRadius,
-                dx: dx,
-                dy: dy,
-                color: '#40C4FF'
-            };
-            if (circle === 'bass') {
-                bassBalls.push(ball);
-            } else {
-                trebleBalls.push(ball);
-            }
+            const ball = { x, y, radius: 12, dx, dy };
+            circle === 'bass' ? bassBalls.push(ball) : trebleBalls.push(ball);
         }
 
-        // Animation loop
         function animate() {
             drawCircles();
             updateBalls();
@@ -466,54 +375,44 @@
             requestAnimationFrame(animate);
         }
 
-        // Event listeners for mouse interactions
-        canvas.addEventListener('mousedown', (event) => {
+        canvas.addEventListener('mousedown', e => {
             const rect = canvas.getBoundingClientRect();
-            dragStartX = event.clientX - rect.left;
-            dragStartY = event.clientY - rect.top;
+            dragStartX = e.clientX - rect.left;
+            dragStartY = e.clientY - rect.top;
 
-            // Determine which circle was clicked
-            const distToLeft = Math.sqrt((dragStartX - leftCenterX) ** 2 + (dragStartY - centerY) ** 2);
-            const distToRight = Math.sqrt((dragStartX - rightCenterX) ** 2 + (dragStartY - centerY) ** 2);
+            const distLeft = Math.hypot(dragStartX - leftCenterX, dragStartY - centerY);
+            const distRight = Math.hypot(dragStartX - rightCenterX, dragStartY - centerY);
 
-            if (distToLeft <= radius) {
-                currentCircle = 'bass';
-            } else if (distToRight <= radius) {
-                currentCircle = 'treble';
-            } else {
-                currentCircle = null;
-            }
+            if (distLeft <= radius) currentCircle = 'bass';
+            else if (distRight <= radius) currentCircle = 'treble';
+            else currentCircle = null;
 
             isDragging = !!currentCircle;
         });
+        canvas.addEventListener('mousemove', e => {
+            if (!isDragging) return;
 
-        canvas.addEventListener('mousemove', (event) => {
-            if (isDragging) {
-                const rect = canvas.getBoundingClientRect();
-                dragEndX = event.clientX - rect.left;
-                dragEndY = event.clientY - rect.top;
-            }
+            const rect = canvas.getBoundingClientRect();
+            dragEndX = e.clientX - rect.left;
+            dragEndY = e.clientY - rect.top;
         });
 
-        canvas.addEventListener('mouseup', (event) => {
-            if (isDragging && currentCircle) {
-                const rect = canvas.getBoundingClientRect();
-                dragEndX = event.clientX - rect.left;
-                dragEndY = event.clientY - rect.top;
+        canvas.addEventListener('mouseup', e => {
+            if (!isDragging) return;
 
-                // Calculate direction and speed
-                const dx = (dragStartX - dragEndX) * 0.1;
-                const dy = (dragStartY - dragEndY) * 0.1;
+            const rect = canvas.getBoundingClientRect();
+            dragEndX = e.clientX - rect.left;
+            dragEndY = e.clientY - rect.top;
 
-                // Create ball in the correct circle
-                createBall(dragStartX, dragStartY, dx, dy, currentCircle);
+            const dx = (dragStartX - dragEndX) * 0.1;
+            const dy = (dragStartY - dragEndY) * 0.1;
 
-                isDragging = false;
-                currentCircle = null;
-            }
+            createBall(dragStartX, dragStartY, dx, dy, currentCircle);
+
+            isDragging = false;
+            currentCircle = null;
         });
 
-        // Handle window resize
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -521,28 +420,16 @@
             rightCenterX = canvas.width * 0.7;
             centerY = canvas.height / 2;
         });
-        document.getElementById('waveSelector').addEventListener('change', (e) => {
-            currentWave = e.target.value;
-        });
 
-        document.getElementById('scaleSelector').addEventListener('change', (e) => {
-            currentScale = e.target.value;
-            updateScale();
-        });
-        document.getElementById('rootSelector').addEventListener('change', (e) => {
-            rootMidi = parseInt(e.target.value);
-            updateScale();
-        });
-        document.getElementById('harmonySelector').addEventListener('change', (e) => {
-            harmonyMode = e.target.value;
-        });
-        document.getElementById('clearBalls').addEventListener('click', () => {
-            bassBalls.length = 0;
-            trebleBalls.length = 0;
-        });
+        // Controles
+        document.getElementById('scaleSelector').onchange = e => { currentScale = e.target.value; updateScale(); };
+        document.getElementById('rootSelector').onchange = e => { rootMidi = parseInt(e.target.value); updateScale(); };
+        document.getElementById('waveSelector').onchange = e => currentWave = e.target.value;
+        document.getElementById('harmonySelector').onchange = e => harmonyMode = e.target.value;
+        document.getElementById('clearBalls').onclick = () => { bassBalls.length = 0; trebleBalls.length = 0; };
 
-        // Start animation
         animate();
+
     </script>
 </body>
 
